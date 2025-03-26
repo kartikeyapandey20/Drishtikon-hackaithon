@@ -41,3 +41,4 @@ watchfiles==1.0.4
 websockets==15.0.1
 psycopg2-binary==2.9.10
 boto3==1.17.0
+feedparser==6.0.11

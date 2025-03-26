@@ -5,15 +5,14 @@ import uuid
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, UploadFile
 from .model import ProcessedData
-from .schema import ProcessedDataSchema
-from core.config import AWS_ACCESS_KEY, AWS_SECRET_KEY, S3_BUCKET_NAME
-
+import os
 class DataRepository:
     def __init__(self):
         self.s3_client = boto3.client(
             "s3",
-            aws_access_key_id=AWS_ACCESS_KEY,
-            aws_secret_access_key=AWS_SECRET_KEY
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_KEY"),
+            region_name=os.getenv("AWS_REGION"),
         )
     
     def upload_to_s3(self, file: UploadFile) -> str:

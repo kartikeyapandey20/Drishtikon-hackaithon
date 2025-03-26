@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from typing import Optional
 from sqlalchemy.orm import Session
-from db.database import get_db
-from domain import ProcessedDataDomain
-from schema import ProcessedDataResponse
+from core.deps import get_db
+from .domain import ProcessedDataDomain
+from .schema import ProcessedDataResponse
 
 class ProcessedDataRouter:
     def __init__(self) -> None:
