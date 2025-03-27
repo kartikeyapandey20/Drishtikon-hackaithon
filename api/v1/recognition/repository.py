@@ -7,10 +7,18 @@ import time
 import os
 from uuid import uuid4
 from io import BytesIO
+import google.generativeai as genai
+import PIL.Image
+from dotenv import load_dotenv
+import io
+load_dotenv()
 
 class RecognitionRepository:
     def __init__(self):
         self.s3_bucket = os.environ.get("AWS_BUCKET_NAME")
+        # Configure Gemini
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.vision_model = genai.GenerativeModel('gemini-2.0-flash')
 
     def upload_image_to_s3(self, image_bytes: bytes, filename: str) -> str:
         """
@@ -44,6 +52,67 @@ class RecognitionRepository:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
 
+    def analyze_image(self, image_bytes: bytes, analysis_type: str) -> str:
+        """
+        Analyze image based on specified type using Gemini Vision.
+
+        Args:
+            image_bytes (bytes): The image data
+            analysis_type (str): Type of analysis to perform (currency, hazard, color, etc.)
+
+        Returns:
+            str: The analysis result
+        """
+        try:
+            # Convert bytes to PIL Image
+            image = PIL.Image.open(io.BytesIO(image_bytes))
+
+            # Define prompts based on analysis type
+            prompts = {
+                "currency": """
+                You are a currency recognition expert. Please analyze this image and provide:
+                1. The currency denomination
+                2. The country of origin
+                3. Any security features visible
+                4. The condition of the currency
+                Please describe this in a clear, accessible way for blind users.
+                """,
+                "hazard": """
+                You are a safety expert. Please analyze this image and identify:
+                1. Any potential hazards or safety concerns
+                2. The level of risk (low, medium, high)
+                3. Recommended safety precautions
+                4. Emergency procedures if applicable
+                Please describe this in a clear, accessible way for blind users.
+                """,
+                "color": """
+                You are a color analysis expert. Please analyze this image and describe:
+                1. The main colors present
+                2. Color combinations and patterns
+                3. Color intensity and brightness
+                4. Any notable color contrasts
+                Please describe this in a clear, accessible way for blind users.
+                """,
+                "general": """
+                You are a visual analysis expert. Please analyze this image and provide:
+                1. A detailed description of what you see
+                2. Important details and context
+                3. Any notable features or patterns
+                4. Relevant background information
+                Please describe this in a clear, accessible way for blind users.
+                """
+            }
+
+            # Get the appropriate prompt
+            prompt = prompts.get(analysis_type, prompts["general"])
+
+            # Generate response using Gemini Vision
+            response = self.vision_model.generate_content([prompt, image])
+            return response.text.strip()
+
+        except Exception as e:
+            raise Exception(f"Error analyzing image: {str(e)}")
+
     def create_recognition_entry(self, text_data: RecognitionCreate, image_bytes: bytes, filename: str, db: Session) -> RecognitionResponse:
         """
         Stores text in DB, uploads image to S3, processes with AI, and returns the result.
@@ -75,8 +144,8 @@ class RecognitionRepository:
             db.commit()
             db.refresh(new_entry)
 
-            # AI Processing
-            result_text = self.ai_processing(new_entry.input_text)
+            # AI Processing with Gemini Vision
+            result_text = self.analyze_image(image_bytes, text_data.input_text.lower())
             new_entry.result_text = result_text
             db.commit()
 
@@ -105,16 +174,3 @@ class RecognitionRepository:
             raise HTTPException(status_code=404, detail="Recognition entry not found")
 
         return entry
-
-    def ai_processing(self, text: str) -> str:
-        """
-        Simulated AI processing function.
-
-        Args:
-            text (str): The input text.
-
-        Returns:
-            str: AI-processed output.
-        """
-        time.sleep(2)  # Simulate AI processing delay
-        return text.upper()  # Example AI transformation
