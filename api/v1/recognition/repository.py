@@ -1,74 +1,91 @@
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, UploadFile
-from core.deps import get_db
+from fastapi import HTTPException
 from .model import RecognitionData
 from .schema import RecognitionCreate, RecognitionResponse
+from utils.file import upload_to_s3
 import time
-import boto3
 import os
 from uuid import uuid4
+from io import BytesIO
 
 class RecognitionRepository:
     def __init__(self):
-        self.s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_KEY"),
-            region_name=os.getenv("AWS_REGION"),
-        )
-        self.s3_bucket = os.getenv("AWS_BUCKET_NAME")
+        self.s3_bucket = os.environ.get("AWS_BUCKET_NAME")
 
-    def upload_image_to_s3(self, file: UploadFile) -> str:
+    def upload_image_to_s3(self, image_bytes: bytes, filename: str) -> str:
         """
         Uploads an image to AWS S3 and returns the file URL.
 
         Args:
-            file (UploadFile): The image file.
+            image_bytes (bytes): The image file as bytes.
+            filename (str): Original filename of the image.
 
         Returns:
             str: The public S3 URL of the uploaded image.
-        """
-        file_extension = file.filename.split(".")[-1]
-        unique_filename = f"{uuid4()}.{file_extension}"
 
+        Raises:
+            HTTPException: If upload fails.
+        """
         try:
-            self.s3_client.upload_fileobj(
-                file.file,
-                self.s3_bucket,
-                unique_filename,
-                ExtraArgs={"ACL": "public-read", "ContentType": file.content_type},
-            )
-            return f"https://{self.s3_bucket}.s3.amazonaws.com/{unique_filename}"
+            file_extension = filename.split(".")[-1]
+            unique_filename = f"{uuid4()}.{file_extension}"
+            
+            # Create a BytesIO object from the bytes
+            file_obj = BytesIO(image_bytes)
+            
+            # Upload using the function from utils/file.py
+            s3_url = upload_to_s3(file_obj, unique_filename)
+            
+            # Check if upload was successful
+            if s3_url.startswith("Error"):
+                raise HTTPException(status_code=500, detail=s3_url)
+                
+            return s3_url
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
 
-    def create_recognition_entry(self, text_data: RecognitionCreate, file: UploadFile, db: Session = Depends(get_db)) -> RecognitionResponse:
+    def create_recognition_entry(self, text_data: RecognitionCreate, image_bytes: bytes, filename: str, db: Session) -> RecognitionResponse:
         """
         Stores text in DB, uploads image to S3, processes with AI, and returns the result.
 
         Args:
             text_data (RecognitionCreate): Input text.
-            file (UploadFile): Image file.
+            image_bytes (bytes): Image file as bytes.
+            filename (str): Original filename of the image.
             db (Session): Database session.
 
         Returns:
             RecognitionResponse: Stored text, image URL, and AI-processed result.
+
+        Raises:
+            HTTPException: If any operation fails.
         """
-        image_url = self.upload_image_to_s3(file)
-        new_entry = RecognitionData(input_text=text_data.input_text, image_url=image_url, result_text=None)
+        try:
+            # First upload the image
+            image_url = self.upload_image_to_s3(image_bytes, filename)
+            
+            # Create database entry
+            new_entry = RecognitionData(
+                input_text=text_data.input_text,
+                image_url=image_url,
+                result_text=None
+            )
 
-        db.add(new_entry)
-        db.commit()
-        db.refresh(new_entry)
+            db.add(new_entry)
+            db.commit()
+            db.refresh(new_entry)
 
-        # AI Processing
-        result_text = self.ai_processing(new_entry.input_text)
-        new_entry.result_text = result_text
-        db.commit()
+            # AI Processing
+            result_text = self.ai_processing(new_entry.input_text)
+            new_entry.result_text = result_text
+            db.commit()
 
-        return new_entry
+            return new_entry
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to create recognition entry: {str(e)}")
 
-    def get_recognition_entry_by_id(self, recognition_id: int, db: Session = Depends(get_db)) -> RecognitionResponse:
+    def get_recognition_entry_by_id(self, recognition_id: int, db: Session) -> RecognitionResponse:
         """
         Retrieve a recognition entry by ID.
 

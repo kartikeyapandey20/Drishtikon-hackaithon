@@ -1,83 +1,53 @@
-import fitz  # PyMuPDF
-import io
-from PIL import Image
-import pytesseract
-from fastapi import File, UploadFile
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-import os
-import shutil
-import tempfile
 import boto3
-from secrets import token_hex
-from dotenv import load_dotenv
-load_dotenv()
+import os
+from io import BytesIO
 
-class FileUtils:
-    def __init__(self):
-        self.s3 = boto3.client(
+
+aws_access_key = os.environ.get("AWS_ACCESS_KEY")
+aws_secret_key = os.environ.get("AWS_SECRET_KEY")
+bucket_name = os.environ.get("AWS_BUCKET_NAME")
+region = os.environ.get("AWS_REGION")
+
+def upload_to_s3(file_obj, object_name):
+    """
+    Uploads a file to an AWS S3 bucket.
+
+    Args:
+        file_obj (Union[str, BytesIO]): Either a file path or a BytesIO object.
+        object_name (str): Name of the object in S3.
+
+    Returns:
+        str: S3 URL of the uploaded file if successful, else error message.
+    """
+    try:
+        # Initialize S3 client
+        s3_client = boto3.client(
             "s3",
-            aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),  
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_key,
+            region_name=region
         )
-        self.bucket_name = os.environ.get("BUCKET_NAME")
-        self.UPLOAD_FOLDER = "uploads/" 
-    @staticmethod
-    def extract_images_from_page(doc, page):
-        images = []
-        image_list = page.get_images(full=True)
-        for image_index, img in enumerate(page.get_images(full=True)):
-            # get the XREF of the image
-            xref = img[0]
-            # extract the image bytes
-            base_image = doc.extract_image(xref)
-            image_bytes = base_image["image"]
 
-            # get the image as a PIL object
-            image = Image.open(io.BytesIO(image_bytes))
-            images.append(image)
-        return images
+        # Upload file
+        if isinstance(file_obj, str):
+            # If file_obj is a path, use upload_file
+            s3_client.upload_file(file_obj, bucket_name, object_name)
+        else:
+            # If file_obj is BytesIO, use upload_fileobj
+            s3_client.upload_fileobj(file_obj, bucket_name, object_name)
 
-    # Function to extract text from all images in a PDF page
-    @staticmethod
-    def extract_text_from_images(images):
-        text = ""
-        for image in images:
-            text += pytesseract.image_to_string(image)
-        return text
-
-    # Function to extract text from a PDF, including text in images
-    @staticmethod
-    def extract_text_from_pdf_with_images(pdf_path):
-        # Open the PDF file
-        doc = fitz.open(pdf_path)
-        total_text = ""
-
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-
-            # Extract text directly from the page
-            total_text += page.get_text()
-
-            # Extract images from the page and then extract text from these images
-            images = FileUtils.extract_images_from_page(doc, page)
-            images_text = FileUtils.extract_text_from_images(images)
-            total_text += images_text
-
-        # Remember to close the document when done
-        doc.close()
-        return total_text
-    def upload_file(self,files: UploadFile = File(...)):
-        with open(os.path.join(self.UPLOAD_FOLDER, files.filename), "wb") as buffer:
-            shutil.copyfileobj(files.file, buffer)
-        file_path = os.path.join(self.UPLOAD_FOLDER, files.filename)
+        # Generate file URL
+        s3_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{object_name}"
         
-        extract_text = FileUtils.extract_text_from_pdf_with_images(file_path)
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
-            temp_file.write(extract_text)
-        file_name = f"{token_hex(10)}.txt"
-        try:
-            self.s3.upload_file(temp_file.name, self.bucket_name, file_name)
-        finally:
-            os.remove(temp_file.name)
-            os.remove(file_path)
-        return file_name
+        print("File uploaded successfully!")
+        return s3_url
+
+    except Exception as e:
+        return f"Error uploading file: {str(e)}"
+
+bucket_name = "drishtikon"
+file_path = "hello5.jpg"  # Replace with the actual file path
+object_name = "hello5.jpg"  # Name in S3
+
+s3_url = upload_to_s3(file_path, object_name)
+print(s3_url)
