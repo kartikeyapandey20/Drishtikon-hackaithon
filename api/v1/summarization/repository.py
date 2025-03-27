@@ -36,12 +36,8 @@ class SummarizationRepository:
         try:
             # First, get comprehensive information about the topic
             research_prompt = f"""
-            You are a research expert. Please provide comprehensive information about: {text_data.input_text}
-            Include key concepts, main ideas, and important details. Make sure to cover:
-            1. Main themes and concepts
-            2. Key takeaways
-            3. Important examples or case studies
-            4. Practical applications or implications
+            You are a research expert. Please provide a comprehensive overview of: {text_data.input_text}
+            Focus on the key concepts, main ideas, and practical applications.
             
             Information:
             """
@@ -52,9 +48,12 @@ class SummarizationRepository:
             # Then, create an accessible summary
             summary_prompt = f"""
             You are an expert at creating accessible summaries for blind people. 
-            Please provide a clear, concise, and well-structured summary of the following information.
-            Focus on the main ideas and key points, using simple language and clear organization.
-            Structure the summary with clear headings and sections.
+            Create a 3-4 line summary that captures the essence of the following information.
+            Each line should focus on a different aspect:
+            1. Main concept/idea
+            2. Key principles or methods
+            3. Practical application or impact
+            Make it expressive, memorable, and impactful while keeping it simple and clear.
             
             Information to summarize:
             {topic_content}
@@ -105,12 +104,8 @@ class SummarizationRepository:
         try:
             # First, get comprehensive information about the topic
             research_prompt = f"""
-            You are a research expert. Please provide comprehensive information about: {text}
-            Include key concepts, main ideas, and important details. Make sure to cover:
-            1. Main themes and concepts
-            2. Key takeaways
-            3. Important examples or case studies
-            4. Practical applications or implications
+            You are a research expert. Please provide a concise but comprehensive overview of: {text}
+            Focus on the most impactful and essential information only.
             
             Information:
             """
@@ -121,9 +116,8 @@ class SummarizationRepository:
             # Then, create an accessible summary
             summary_prompt = f"""
             You are an expert at creating accessible summaries for blind people. 
-            Please provide a clear, concise, and well-structured summary of the following information.
-            Focus on the main ideas and key points, using simple language and clear organization.
-            Structure the summary with clear headings and sections.
+            Create a single, powerful line that captures the essence of the following information.
+            Make it expressive, memorable, and impactful while keeping it simple and clear.
             
             Information to summarize:
             {topic_content}
