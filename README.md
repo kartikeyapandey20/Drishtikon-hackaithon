@@ -5,7 +5,7 @@ A FastAPI backend for assisting visually impaired people by processing images th
 ## Features
 
 - **Image Processing**: Upload images and get detailed descriptions using state-of-the-art vision and language models
-- **Multiple Processing Modes**:
+- **Multiple Processing Modes**: 
   - General Description: Get a general description of any image
   - OCR: Extract and format text from images
   - Scene Analysis: Get detailed analysis of scenes with spatial relationships
