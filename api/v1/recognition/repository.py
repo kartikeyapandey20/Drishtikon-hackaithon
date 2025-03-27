@@ -23,7 +23,7 @@ class RecognitionRepository:
     def upload_image_to_s3(self, image_bytes: bytes, filename: str) -> str:
         """
         Uploads an image to AWS S3 and returns the file URL.
-
+ 
         Args:
             image_bytes (bytes): The image file as bytes.
             filename (str): Original filename of the image.
@@ -58,7 +58,7 @@ class RecognitionRepository:
 
         Args:
             image_bytes (bytes): The image data
-            analysis_type (str): Type of analysis to perform (currency, hazard, color, etc.)
+            analysis_type (str): Type of analysis to perform (currency, hazard, color, etc.) or user's specific query
 
         Returns:
             str: The analysis result
@@ -92,19 +92,22 @@ class RecognitionRepository:
                 3. Color intensity and brightness
                 4. Any notable color contrasts
                 Please describe this in a clear, accessible way for blind users.
-                """,
-                "general": """
-                You are a visual analysis expert. Please analyze this image and provide:
-                1. A detailed description of what you see
-                2. Important details and context
-                3. Any notable features or patterns
-                4. Relevant background information
-                Please describe this in a clear, accessible way for blind users.
                 """
             }
 
-            # Get the appropriate prompt
-            prompt = prompts.get(analysis_type, prompts["general"])
+            # Get the appropriate prompt or create a custom one based on user's query
+            if analysis_type in prompts:
+                prompt = prompts[analysis_type]
+            else:
+                prompt = f"""
+                You are a visual analysis expert. The user wants to know about: "{analysis_type}"
+                Please analyze this image and provide:
+                1. A detailed description focusing on aspects related to the user's query
+                2. Important details and context relevant to the query
+                3. Any notable features or patterns that might be of interest
+                4. Additional relevant information that could help understand the image better
+                Please describe this in a clear, accessible way for blind users.
+                """
 
             # Generate response using Gemini Vision
             response = self.vision_model.generate_content([prompt, image])

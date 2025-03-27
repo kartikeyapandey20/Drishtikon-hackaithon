@@ -44,10 +44,3 @@ def upload_to_s3(file_obj, object_name):
 
     except Exception as e:
         return f"Error uploading file: {str(e)}"
-
-bucket_name = "drishtikon"
-file_path = "hello5.jpg"  # Replace with the actual file path
-object_name = "hello5.jpg"  # Name in S3
-
-s3_url = upload_to_s3(file_path, object_name)
-print(s3_url)

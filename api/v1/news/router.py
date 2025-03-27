@@ -19,14 +19,13 @@ class NewsRouter:
         
         @api_router.get("/", response_model=NewsResponse)
         async def get_news_by_query(
-            query: str = Query(..., description="Search query for news articles"),
             days: int = Query(7, description="Number of days to look back for news"),
             limit: int = Query(10, description="Maximum number of articles to return"),
-            force_refresh: Optional[bool] = Query(False, description="Force a refresh of the cache")
+            force_refresh: Optional[bool] = Query(True, description="Force a refresh of the cache")
         ):
             """
             Get news articles based on a search query.
             """
-            return await self.__domain.get_news_by_query(query=query, days=days, limit=limit, force_refresh=force_refresh)
+            return await self.__domain.get_news_by_query(days=days, limit=limit, force_refresh=force_refresh)
             
         return api_router

@@ -10,6 +10,7 @@ class NewsArticle(BaseModel):
     published_at: datetime
     image_url: Optional[str] = None
     author: Optional[str] = None
+    relevance_score: float = 0.0
 
 class NewsResponse(BaseModel):
     articles: List[NewsArticle]
