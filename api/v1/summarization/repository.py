@@ -15,7 +15,7 @@ class SummarizationRepository:
         # Configure Gemini
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
         self.model = genai.GenerativeModel('gemini-2.0-flash')
-
+ 
     def create_text(self, text_data: SummarizationCreate, db: Session = Depends(get_db)) -> SummarizationResponse:
         """
         Create a new text entry, store it in the database, process it with AI, and update the result.
