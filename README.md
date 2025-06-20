@@ -1,4 +1,4 @@
-# Visually Impaired Assistant API
+# Drishtikon Backend
 
 A FastAPI backend for assisting visually impaired people by processing images through Vision Language Models (VLMs) and Language Models (LLMs) to provide detailed, accessible descriptions.
 
