@@ -2,6 +2,7 @@
 
 A FastAPI backend for assisting visually impaired people by processing images through Vision Language Models (VLMs) and Language Models (LLMs) to provide detailed, accessible descriptions.
 
+Future Backend will be updated with PyNest
 ## Features
 
 - **Image Processing**: Upload images and get detailed descriptions using state-of-the-art vision and language models
